@@ -3,41 +3,61 @@
 # 内容理解をすべて理解するには bashの最低限の知識が必要
 # bash について詳しくは → Google!
 
-# ただ、処理の流れは理解できるようにコメントはきちんと書きます
-
-# コマンドライン引数が渡されているか確認
-
+# コマンドライン引数の数が正しいか判定
 if [ $# -ne 2 ]; then
-  echo "第一引数はファイル名またはディレクトリ名、第二引数はファイルサーバーのパスが必要です。"
+  echo "第一引数はファイルまたはディレクトリの絶対パス"
+  echo "第二引数はファイルサーバーの/home/share/ 以下のディレクトリのパスが必要です。"
   echo "詳しくは、README を確認してください。"
   exit 2
 fi
 
 # コマンドライン引数の第一引数を取得
-# ex $ /home/hoge/upload-relay-point/upload.sh soccer.txt /home/
-# この場合 $ は soccer $absolutePath は /home/
+# ex $ /home/hoge/upload-relay-point/upload.sh /home/user/hello.txt abc/def/
+# この場合 $absoluteFileServerPath は abc/def/
 
-File_or_DirectoryName=$1
-absolutePass=$2
+localFileOrDirectoryPath=$1
+absoluteFileServerPath=$2
 
-# mktemp: 適当なファイル名の空ファイルを作成する
-# 一時的に、データを保存したいので使用する
-# ex. $ mktemp
-#     /tmp/tmp.dpgp9A7UxD
-
-# $[before|after]OperationAbsolutePathTemp には、 /tmp/tmp.dpgp9A7UxD などが格納される
+# $[before|after]OperationabsoluteFileServerPathTemp には、 /tmp/tmp.dpgp9A7UxD などが格納される
 # 下記の処理で、一時ファイルを利用しているかは、(もっとスマートな実装ができる気がする)
 # http://www.atmarkit.co.jp/ait/articles/1209/14/news147.html などを参照
 
-fileName=`ssh Ri-one_RelayPoint "mktemp -d -p /home/ec2-user/share"`
+# mktemp: 適当なファイル名の空ファイルを作成する
+# 一時的に、データを保存したいので使用する
+# ex. $ mktemp -d -p '/home/ec2-user/share'
+#     /home/ec2-user/share/tmp.VlLH6dQviP
 
-#生成したディレクトリ内に第一引数（File_or_DirectoryName）を入れる
+# $relayServerTempDirectoryAbsolutePath　には、 /home/ec2-user/share/tmp.VlLH6dQviP などが格納
+relayServerTempDirectoryAbsolutePath=`ssh Ri-one_RelayPoint "mktemp -d -p '/home/ec2-user/share'"`
 
-identifyFile=~/.ssh/ri-oneFileServerRelayPoint.pem
+# 生成したディレクトリ内に第一引数（localFileOrDirectoryPath）を入れる
 
-fileMove=`scp -i $identifyFile $File_or_DirectoryName ec2-user@13.231.55.13:$fileName`
+# 鍵のパス
+identifyFilePath="$HOME/.ssh/ri-oneFileServerRelayPoint.pem"
 
-#第二引数（absolutePass）をabspass.txtにコピーしてディレクトリーにいれる
+# 鍵が存在しない時
+if [ ! -f $identifyFilePath ]; then
+  echo ${identifyFilePath} が存在しません。
+  echo "詳しくは、README を確認してください。"
+  exit 2
+fi
 
-ssh Ri-one_RelayPoint "echo $absolutePass >$fileName/abspass.txt"
+relayPointUser="ec2-user"
 
+host="13.231.55.13"
+
+
+# 経由するインスタンス上に、ローカルファイルをアップロード
+# ファイル、シンボリックリンクの場合
+if [ -f $localFileOrDirectoryPath ]; then
+  scp -i $identifyFilePath $localFileOrDirectoryPath $relayPointUser@$host:$relayServerTempDirectoryAbsolutePath
+
+# ディレクトリの場合
+else
+  scp -i $identifyFilePath -r $localFileOrDirectoryPath $relayPointUser@$host:$relayServerTempDirectoryAbsolutePath
+fi
+
+#第二引数（absoluteFileServerPath）をabspass.txtにコピーしてディレクトリーにいれる
+
+absolutePathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.absolutePathOfFileServer
+ssh Ri-one_RelayPoint "echo $absoluteFileServerPath > $absolutePathOfFileServerInRelayPoint"
