@@ -33,6 +33,8 @@ if [ $# -eq 1 ]; then
     ssh -i $identifyFilePath $relayPointUser@$host "cat ~/.tree"
   elif [ $option = "-l" ]; then
     ssh -i $identifyFilePath $relayPointUser@$host "cat ~/.absolutePathListOfFileServer"
+  elif [ $option = "-v" ]; then
+    ssh -i $identifyFilePath $relayPointUser@$host "echo Version 1.00 2017-2018 by Junichiro Kawano, Taku Kitamura, Kansei Ishikawa"
   fi
 
 #引数が２つ
@@ -129,7 +131,7 @@ elif [ $option = "-p" ]; then
     ssh -i $identifyFilePath $relayPointUser@$host "echo deleteAbsolutePath=''>>$absolutePathOfFileServerInRelayPoint"
     ssh -i $identifyFilePath $relayPointUser@$host "echo renameAbsolutePath=''>>$absolutePathOfFileServerInRelayPoint"
     ssh -i $identifyFilePath $relayPointUser@$host "echo downloadAbsolutePath=''>>$absolutePathOfFileServerInRelayPoint"
-    
+
   fi
 
 #引数が3つ
