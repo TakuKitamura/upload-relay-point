@@ -42,8 +42,9 @@ elif [ $# -eq 2 ]; then
 
   #option機能delete
   if [ $option = "-d" ]; then
-    delPathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/delpath.txt
-    ssh -i $identifyFilePath $relayPointUser@$host "echo $absoluteFileServerPath>$delPathOfFileServerInRelayPoint"
+    delPathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.requestParms
+    ssh -i $identifyFilePath $relayPointUser@$host "echo absPath='' >$delPathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo delPass=$absoluteFileServerPath>>$delPathOfFileServerInRelayPoint"
   else
     # コマンドライン引数の第一引数を取得
     # ex $ /home/hoge/upload-relay-point/upload.sh /home/user/hello.txt abc/def/
@@ -108,8 +109,10 @@ elif [ $# -eq 2 ]; then
 
     #
 
-    absolutePathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.absolutePathOfFileServer
-    ssh -i $identifyFilePath $relayPointUser@$host "echo $absoluteFileServerPath > $absolutePathOfFileServerInRelayPoint"
+    absolutePathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.requestParms
+    ssh -i $identifyFilePath $relayPointUser@$host "echo absPath=$absoluteFileServerPath > $absolutePathOfFileServerInRelayPoint"
+      ssh -i $identifyFilePath $relayPointUser@$host "echo delPass=''>>$absolutePathOfFileServerInRelayPoint"
+
 
     echo "第一引数はファイルまたはディレクトリの絶対パス"
     echo "第二引数ディレクトリの絶対パスが必要です。"
