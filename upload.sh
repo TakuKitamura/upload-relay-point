@@ -25,16 +25,18 @@ relayPointUser="ec2-user"
 
 host="52.192.59.159"
 
+option=$1
+
+#引数が１つ
 if [ $# -eq 1 ]; then
-  option=$1
   if [ $option = "-t" ]; then
     ssh -i $identifyFilePath $relayPointUser@$host "cat ~/.tree"
   elif [ $option = "-l" ]; then
     ssh -i $identifyFilePath $relayPointUser@$host "cat ~/.absolutePathListOfFileServer"
   fi
 
+#引数が２つ
 elif [ $# -eq 2 ]; then
-  option=$1
   absoluteFileServerPath=$2
 
   # $relayServerTempDirectoryAbsolutePath　には、 /home/ec2-user/share/tmp.VlLH6dQviP などが格納
@@ -42,9 +44,11 @@ elif [ $# -eq 2 ]; then
 
   #option機能delete
   if [ $option = "-d" ]; then
+    deleteFileSeverPath=$absoluteFileServerPath
     delPathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.requestParms
     ssh -i $identifyFilePath $relayPointUser@$host "echo absPath='' >$delPathOfFileServerInRelayPoint"
-    ssh -i $identifyFilePath $relayPointUser@$host "echo delPass=$absoluteFileServerPath>>$delPathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo delPass=$deleteFileServerPath>>$delPathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo renamePath=''>>$delPathOfFileServerInRelayPoint"
   else
     # コマンドライン引数の第一引数を取得
     # ex $ /home/hoge/upload-relay-point/upload.sh /home/user/hello.txt abc/def/
@@ -111,12 +115,27 @@ elif [ $# -eq 2 ]; then
 
     absolutePathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.requestParms
     ssh -i $identifyFilePath $relayPointUser@$host "echo absPath=$absoluteFileServerPath > $absolutePathOfFileServerInRelayPoint"
-      ssh -i $identifyFilePath $relayPointUser@$host "echo delPass=''>>$absolutePathOfFileServerInRelayPoint"
-
+    ssh -i $identifyFilePath $relayPointUser@$host "echo delPass=''>>$absolutePathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo renamePass=''>>$absolutePathOfFileServerInRelayPoint"
 
     echo "第一引数はファイルまたはディレクトリの絶対パス"
     echo "第二引数ディレクトリの絶対パスが必要です。"
     echo "詳しくは、README を確認してください。"
     exit 2
+  fi
+
+#引数が3つ
+elif [ $# -eq 3 ]; then
+  beforePath=$2
+  afterPath=$3
+
+  if [ $option = "-r" ]; then
+    # $relayServerTempDirectoryAbsolutePath　には、 /home/ec2-user/share/tmp.VlLH6dQviP などが格納
+    relayServerTempDirectoryAbsolutePath=`ssh -i $identifyFilePath $relayPointUser@$host "cd ~; mktemp -d -p './share'"`
+
+    renamePathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.requestParms
+    ssh -i $identifyFilePath $relayPointUser@$host "echo absPath='' > $renamePathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo delPass=''>>$renamePathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo renamePass=$beforePath'|'$afterPath>>$renamePathOfFileServerInRelayPoint"
   fi
 fi
