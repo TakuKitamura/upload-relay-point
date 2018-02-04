@@ -36,16 +36,20 @@ if [ $# -eq 1 ]; then
 elif [ $# -eq 2 ]; then
   option=$1
   absoluteFileServerPath=$2
+
+  # $relayServerTempDirectoryAbsolutePath　には、 /home/ec2-user/share/tmp.VlLH6dQviP などが格納
+  relayServerTempDirectoryAbsolutePath=`ssh -i $identifyFilePath $relayPointUser@$host "cd ~; mktemp -d -p './share'"`
+
   #option機能delete
   if [ $option = "-d" ]; then
-
-    ssh -i $identifyFilePath $relayPointUser@$host ""
+    delPathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/delpath.txt
+    ssh -i $identifyFilePath $relayPointUser@$host "echo $absoluteFileServerPath>$delPathOfFileServerInRelayPoint"
   else
     # コマンドライン引数の第一引数を取得
     # ex $ /home/hoge/upload-relay-point/upload.sh /home/user/hello.txt abc/def/
     # この場合 $absoluteFileServerPath は abc/def/
 
-    localFileOrDirectoryPath=option
+    localFileOrDirectoryPath=$option
 
     if [ ! -e $localFileOrDirectoryPath ]; then
       echo "ローカル上の、 $localFileOrDirectoryPath が存在しません。"
@@ -62,8 +66,7 @@ elif [ $# -eq 2 ]; then
     # ex. $ mktemp -d -p '/home/ec2-user/share'
     #     /home/ec2-user/share/tmp.VlLH6dQviP
 
-    # $relayServerTempDirectoryAbsolutePath　には、 /home/ec2-user/share/tmp.VlLH6dQviP などが格納
-    relayServerTempDirectoryAbsolutePath=`ssh -i $identifyFilePath $relayPointUser@$host "cd ~; mktemp -d -p './share'"`
+
 
     # 生成したディレクトリ内に第一引数（localFileOrDirectoryPath）を入れる
 
