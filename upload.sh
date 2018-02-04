@@ -44,11 +44,22 @@ elif [ $# -eq 2 ]; then
 
   #option機能delete
   if [ $option = "-d" ]; then
-    deleteFileSeverPath=$absoluteFileServerPath
-    delPathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.requestParms
-    ssh -i $identifyFilePath $relayPointUser@$host "echo absPath='' >$delPathOfFileServerInRelayPoint"
-    ssh -i $identifyFilePath $relayPointUser@$host "echo delPass=$deleteFileServerPath>>$delPathOfFileServerInRelayPoint"
-    ssh -i $identifyFilePath $relayPointUser@$host "echo renamePath=''>>$delPathOfFileServerInRelayPoint"
+    deleteFileServerPath=$absoluteFileServerPath
+    delPathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.requestParams
+    ssh -i $identifyFilePath $relayPointUser@$host "echo uploadAbsolutePath='' >$delPathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo deleteAbsolutePath=$deleteFileServerPath>>$delPathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo renameAbsolutePath=''>>$delPathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo downloadAbsolutePath=''>>$delPathOfFileServerInRelayPoint"
+
+  #option機能pull
+elif [ $option = "-p" ]; then
+    pullFileSeverPath=$absoluteFileServerPath
+    pullPathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.requestParams
+    ssh -i $identifyFilePath $relayPointUser@$host "echo uploadAbsolutePath='' >$pullPathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo deleteAbsolutePath=''>>$pullPathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo renameAbsolutePath=''>>$pullPathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo downloadAbsolutePath=$pullFileSeverPath>>$pullPathOfFileServerInRelayPoint"
+
   else
     # コマンドライン引数の第一引数を取得
     # ex $ /home/hoge/upload-relay-point/upload.sh /home/user/hello.txt abc/def/
@@ -113,15 +124,12 @@ elif [ $# -eq 2 ]; then
 
     #
 
-    absolutePathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.requestParms
-    ssh -i $identifyFilePath $relayPointUser@$host "echo absPath=$absoluteFileServerPath > $absolutePathOfFileServerInRelayPoint"
-    ssh -i $identifyFilePath $relayPointUser@$host "echo delPass=''>>$absolutePathOfFileServerInRelayPoint"
-    ssh -i $identifyFilePath $relayPointUser@$host "echo renamePass=''>>$absolutePathOfFileServerInRelayPoint"
-
-    echo "第一引数はファイルまたはディレクトリの絶対パス"
-    echo "第二引数ディレクトリの絶対パスが必要です。"
-    echo "詳しくは、README を確認してください。"
-    exit 2
+    absolutePathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.requestParams
+    ssh -i $identifyFilePath $relayPointUser@$host "echo uploadAbsolutePath=$absoluteFileServerPath > $absolutePathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo deleteAbsolutePath=''>>$absolutePathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo renameAbsolutePath=''>>$absolutePathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo downloadAbsolutePath=''>>$absolutePathOfFileServerInRelayPoint"
+    
   fi
 
 #引数が3つ
@@ -133,9 +141,10 @@ elif [ $# -eq 3 ]; then
     # $relayServerTempDirectoryAbsolutePath　には、 /home/ec2-user/share/tmp.VlLH6dQviP などが格納
     relayServerTempDirectoryAbsolutePath=`ssh -i $identifyFilePath $relayPointUser@$host "cd ~; mktemp -d -p './share'"`
 
-    renamePathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.requestParms
-    ssh -i $identifyFilePath $relayPointUser@$host "echo absPath='' > $renamePathOfFileServerInRelayPoint"
-    ssh -i $identifyFilePath $relayPointUser@$host "echo delPass=''>>$renamePathOfFileServerInRelayPoint"
-    ssh -i $identifyFilePath $relayPointUser@$host "echo renamePass=$beforePath'|'$afterPath>>$renamePathOfFileServerInRelayPoint"
+    renameAbsolutePathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.requestParams
+    ssh -i $identifyFilePath $relayPointUser@$host "echo uploadAbsolutePath='' > $renameAbsolutePathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo deleteAbsolutePath=''>>$renameAbsolutePathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo renameAbsolutePath=$beforePath'|'$afterPath>>$renameAbsolutePathOfFileServerInRelayPoint"
+    ssh -i $identifyFilePath $relayPointUser@$host "echo downloadAbsolutePath=''>>$renameAbsolutePathOfFileServerInRelayPoint"
   fi
 fi
