@@ -34,80 +34,86 @@ if [ $# -eq 1 ]; then
   fi
 
 elif [ $# -eq 2 ]; then
-
-  # コマンドライン引数の第一引数を取得
-  # ex $ /home/hoge/upload-relay-point/upload.sh /home/user/hello.txt abc/def/
-  # この場合 $absoluteFileServerPath は abc/def/
-
-  localFileOrDirectoryPath=$1
-
-  if [ ! -e $localFileOrDirectoryPath ]; then
-    echo "ローカル上の、 $localFileOrDirectoryPath が存在しません。"
-    echo "終了します。"
-    exit 2
-  fi
-
+  option=$1
   absoluteFileServerPath=$2
-
-
-  # $[before|after]OperationabsoluteFileServerPathTemp には、 /tmp/tmp.dpgp9A7UxD などが格納される
-  # 下記の処理で、一時ファイルを利用しているかは、(もっとスマートな実装ができる気がする)
-  # http://www.atmarkit.co.jp/ait/articles/1209/14/news147.html などを参照
-
-  # mktemp: 適当なファイル名の空ファイルを作成する
-  # 一時的に、データを保存したいので使用する
-  # ex. $ mktemp -d -p '/home/ec2-user/share'
-  #     /home/ec2-user/share/tmp.VlLH6dQviP
 
   # $relayServerTempDirectoryAbsolutePath　には、 /home/ec2-user/share/tmp.VlLH6dQviP などが格納
   relayServerTempDirectoryAbsolutePath=`ssh -i $identifyFilePath $relayPointUser@$host "cd ~; mktemp -d -p './share'"`
 
-  # 生成したディレクトリ内に第一引数（localFileOrDirectoryPath）を入れる
+  #option機能delete
+  if [ $option = "-d" ]; then
+    delPathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/delpath.txt
+    ssh -i $identifyFilePath $relayPointUser@$host "echo $absoluteFileServerPath>$delPathOfFileServerInRelayPoint"
+  else
+    # コマンドライン引数の第一引数を取得
+    # ex $ /home/hoge/upload-relay-point/upload.sh /home/user/hello.txt abc/def/
+    # この場合 $absoluteFileServerPath は abc/def/
 
-  # ./upload.sh /Users/kitamurataku/downloads/exam2015.pdf /home/ri-one/share/abc
+    localFileOrDirectoryPath=$option
 
-  # 絶対パスからベースネームを取得
-  # ex. $ basename /Users/kitamurataku/downloads/test.txt
-  #       test.txt
-  baseFileOrDirectoryName=`basename $localFileOrDirectoryPath`
-  echo $baseFileOrDirectoryName
+    if [ ! -e $localFileOrDirectoryPath ]; then
+      echo "ローカル上の、 $localFileOrDirectoryPath が存在しません。"
+      echo "終了します。"
+      exit 2
+    fi
 
-  # ファイルサーバーにアップロード予定の、絶対パス
-  willUploadFileAbsolutePath=`echo "$absoluteFileServerPath/$baseFileOrDirectoryName" | sed -e 's/\/\//\//g'`
-  echo $willUploadFileAbsolutePath
-  echo "abc"
+    # $[before|after]OperationabsoluteFileServerPathTemp には、 /tmp/tmp.dpgp9A7UxD などが格納される
+    # 下記の処理で、一時ファイルを利用しているかは、(もっとスマートな実装ができる気がする)
+    # http://www.atmarkit.co.jp/ait/articles/1209/14/news147.html などを参照
 
-  uploadFileAbsolutePath=`ssh -i $identifyFilePath $relayPointUser@$host "cat ~/.absolutePathListOfFileServer | grep -x $willUploadFileAbsolutePath"`
-  echo $uploadFileAbsolutePath
+    # mktemp: 適当なファイル名の空ファイルを作成する
+    # 一時的に、データを保存したいので使用する
+    # ex. $ mktemp -d -p '/home/ec2-user/share'
+    #     /home/ec2-user/share/tmp.VlLH6dQviP
 
-  # ファイルサーバーにアップロードする予定のファイルサーバーのパスに、ファイルまたは、ディレトリが存在する時
-  # つまり、ファイルをアップロードできない時
-  if [ -n "$uploadFileAbsolutePath" ]; then
-    echo "ファイルサーバー上に、 $willUploadFileAbsolutePath が存在します。"
-    echo "終了します。"
+
+
+    # 生成したディレクトリ内に第一引数（localFileOrDirectoryPath）を入れる
+
+    # ./upload.sh /Users/kitamurataku/downloads/exam2015.pdf /home/ri-one/share/abc
+
+    # 絶対パスからベースネームを取得
+    # ex. $ basename /Users/kitamurataku/downloads/test.txt
+    #       test.txt
+    baseFileOrDirectoryName=`basename $localFileOrDirectoryPath`
+    echo $baseFileOrDirectoryName
+
+    # ファイルサーバーにアップロード予定の、絶対パス
+    willUploadFileAbsolutePath=`echo "$absoluteFileServerPath/$baseFileOrDirectoryName" | sed -e 's/\/\//\//g'`
+    echo $willUploadFileAbsolutePath
+    echo "abc"
+
+    uploadFileAbsolutePath=`ssh -i $identifyFilePath $relayPointUser@$host "cat ~/.absolutePathListOfFileServer | grep -x $willUploadFileAbsolutePath"`
+    echo $uploadFileAbsolutePath
+
+    # ファイルサーバーにアップロードする予定のファイルサーバーのパスに、ファイルまたは、ディレトリが存在する時
+    # つまり、ファイルをアップロードできない時
+    if [ -n "$uploadFileAbsolutePath" ]; then
+      echo "ファイルサーバー上に、 $willUploadFileAbsolutePath が存在します。"
+      echo "終了します。"
+      exit 2
+    fi
+
+    # 経由するインスタンス上に、ローカルファイルをアップロード
+    # ファイル、シンボリックリンクの場合
+    if [ -f $localFileOrDirectoryPath ]; then
+      echo "ファイルをアップロードします。"
+      scp -i $identifyFilePath $localFileOrDirectoryPath $relayPointUser@$host:$relayServerTempDirectoryAbsolutePath
+
+      # ディレクトリの場合
+    else
+      echo "ディレクトリをアップロードします。"
+      scp -i $identifyFilePath -r $localFileOrDirectoryPath $relayPointUser@$host:$relayServerTempDirectoryAbsolutePath
+    fi
+
+    #
+
+    absolutePathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.absolutePathOfFileServer
+    ssh -i $identifyFilePath $relayPointUser@$host "echo $absoluteFileServerPath > $absolutePathOfFileServerInRelayPoint"
+
+    echo "第一引数はファイルまたはディレクトリの絶対パス"
+    echo "第二引数ディレクトリの絶対パスが必要です。"
+    echo "詳しくは、README を確認してください。"
     exit 2
   fi
-
-  # 経由するインスタンス上に、ローカルファイルをアップロード
-  # ファイル、シンボリックリンクの場合
-  if [ -f $localFileOrDirectoryPath ]; then
-    echo "ファイルをアップロードします。"
-    scp -i $identifyFilePath $localFileOrDirectoryPath $relayPointUser@$host:$relayServerTempDirectoryAbsolutePath
-
-    # ディレクトリの場合
-  else
-    echo "ディレクトリをアップロードします。"
-    scp -i $identifyFilePath -r $localFileOrDirectoryPath $relayPointUser@$host:$relayServerTempDirectoryAbsolutePath
-  fi
-
-  #第二引数（absoluteFileServerPath）をabspass.txtにコピーしてディレクトリーにいれる
-
-  absolutePathOfFileServerInRelayPoint=$relayServerTempDirectoryAbsolutePath/.absolutePathOfFileServer
-  ssh -i $identifyFilePath $relayPointUser@$host "echo $absoluteFileServerPath > $absolutePathOfFileServerInRelayPoint"
-
-else
-  echo "第一引数はファイルまたはディレクトリの絶対パス"
-  echo "第二引数ディレクトリの絶対パスが必要です。"
-  echo "詳しくは、README を確認してください。"
-  exit 2
 fi
