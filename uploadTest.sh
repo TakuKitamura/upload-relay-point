@@ -4,7 +4,7 @@ for i in `seq 0 2`
 do
   if [ $option = "-u" ]; then
     echo "アップロード"
-    ./upload.sh uploadTestFile.txt /home/ec2-user/share/testDir$i
+    ./upload.sh uploadTestFile.txt /home/ec2-user/share
   elif [ $option = "-d" ]; then
     ./upload.sh -d /home/ec2-user/share/testDir$i/testFile$i.txt
   elif [ $option = "-p" ]; then
