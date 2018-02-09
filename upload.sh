@@ -1,10 +1,7 @@
 #!/bin/bash
 
-# 内容理解をすべて理解するには bashの最低限の知識が必要
-# bash について詳しくは → Google!
-
 # 鍵のパス
-identifyFilePath="$HOME/.ssh/ri-oneFileServerRelayPoint.pem"
+identifyFilePath="$HOME/.ssh/ri-one-file-server.pem"
 
 # 鍵が存在しない時
 if [ ! -f $identifyFilePath ]; then
@@ -13,9 +10,10 @@ if [ ! -f $identifyFilePath ]; then
   exit 2
 fi
 
-relayPointUser="ec2-user"
+check="no"
+relayPointUser="ri-one"
 
-host="52.192.59.159"
+host="172.25.72.13"
 
 option=$1
 
@@ -24,11 +22,8 @@ if [ $# -eq 1 ]; then
 
   # ディレクトリツリーを表示
   if [ $option = "-t" ]; then
-    ssh -T -i $identifyFilePath $relayPointUser@$host "cat ~/.tree"
-
-  # ディレクトリリストを表示
-  elif [ $option = "-l" ]; then
-    ssh -T -i $identifyFilePath $relayPointUser@$host "cat ~/.absolutePathListOfFileServer"
+    #ssh -T -i $identifyFilePath $relayPointUser@$host "cat ~/.tree"
+    ssh Ri-one-File-Server "cd ~/; tree"
 
   # バージョン情報を表示
   elif [ $option = "-v" ]; then
@@ -42,106 +37,79 @@ elif [ $# -eq 2 ]; then
   if [ $option = "-d" ]; then
 
     deleteFileServerPath=$2
-
-    # ファイルサーバへのリクエスト情報
-    requestParamsText="uploadAbsolutePath=''\ndeleteAbsolutePath=${deleteFileServerPath}\nrenameAbsolutePath=''\ndownloadAbsolutePath=''"
-
-    # 経由サーバへ、ファイルサーバへのリクエスト情報を一意なディレクトリ内に配置
-    ssh -T -i $identifyFilePath $relayPointUser@$host << EOF
-    relayServerTempDirectoryAbsolutePath=\`mktemp -d -p '/home/ec2-user/share'\`/.requestParams
-    echo -e '$requestParamsText' > \`echo \$relayServerTempDirectoryAbsolutePath\`
-EOF
-
-  # ファイルサーバへPULLリクエスト
-  elif [ $option = "-p" ]; then
-    pullFileSeverPath=$2
-
-    # ファイルサーバへのリクエスト情報
-    requestParamsText="uploadAbsolutePath=''\ndeleteAbsolutePath=''\nrenameAbsolutePath=''\ndownloadAbsolutePath=${pullFileSeverPath}"
-
-    # 経由サーバへ、ファイルサーバへのリクエスト情報を一意なディレクトリ内に配置
-    ssh -T -i $identifyFilePath $relayPointUser@$host << EOF
-    relayServerTempDirectoryAbsolutePath=\`mktemp -d -p '/home/ec2-user/share'\`/.requestParams
-    echo -e '$requestParamsText' > \`echo \$relayServerTempDirectoryAbsolutePath\`
-EOF
+    math=`ssh Ri-one-File-Server test -e $deleteFileServerPath ; echo $?`
+    if [ $math == "1" ]; then
+      echo "そのようなファイルやディレクトリは存在しません"
+      echo "終了します。"
+      exit 2
+    fi
+    #ファイルの削除
+    ssh Ri-one-File-Server "rm -r $deleteFileServerPath"
+    str=`echo ${deleteFileServerPath} | awk -F "/" '{ print $NF }'`
+    doname="unlink"
+    check="ok"
 
   else
     # コマンドライン引数の第一引数を取得
     # ex $ /home/hoge/upload-relay-point/upload.sh /home/user/hello.txt abc/def/
     # この場合 $absoluteFileServerPath は abc/def/
 
+    doname="pwrite"
+
     localFileOrDirectoryPath=$1
+    str=`echo ${localFileOrDirectoryPath} | awk -F "/" '{ print $NF }'`
 
     if [ ! -e $localFileOrDirectoryPath ]; then
       echo "ローカル上の、 $localFileOrDirectoryPath が存在しません。"
       echo "終了します。"
       exit 2
     fi
+    relayServerTempDirectoryAbsolutePath=$2
 
-    # 絶対パスからベースネームを取得
-    # ex. $ basename /Users/kitamurataku/downloads/test.txt
-    #       test.txt
-    baseFileOrDirectoryName=`basename $localFileOrDirectoryPath`
+    math=`ssh Ri-one-File-Server test -d $relayServerTempDirectoryAbsolutePath ; echo $?`
 
-    # ファイルサーバーにアップロード予定の、絶対パス
-    willUploadFileAbsolutePath=`echo "$2/$baseFileOrDirectoryName" | sed -e 's/\/\//\//g'`
-
-    # ファイルサーバへのリクエスト情報
-    requestParamsText="uploadAbsolutePath=${2}\ndeleteAbsolutePath=''\nrenameAbsolutePath=''\ndownloadAbsolutePath=''"
-
-    # 経由サーバへ、ファイルサーバへのリクエスト情報を一意なディレクトリ内に配置
-    ssh -T -i $identifyFilePath $relayPointUser@$host << EOF > /tmp/.relayServerTempDirectoryAbsolutePath
-
-    # ローカルから、ファイルサーバへ上げる予定のファイルがファイルサーバ上の同じパスに存在するかチェック
-    uploadFileAbsolutePath=\`cat ~/.absolutePathListOfFileServer | grep -x $willUploadFileAbsolutePath\`
-
-    # 存在する場合
-    if [ -n "$uploadFileAbsolutePath" ]; then
-      echo "ファイルサーバー上に、 $willUploadFileAbsolutePath が存在します。"
+    if [ $math == "1" ]; then
+      echo "そのようなディレクトリは存在しません"
       echo "終了します。"
       exit 2
-
-    # 存在しない場合
-    else
-      # 経由サーバへ、ファイルサーバへのリクエスト情報を一意なディレクトリ内に配置
-      relayServerTempDirectoryAbsolutePath=\`mktemp -d -p '/home/ec2-user/share'\`/.requestParams
-      echo -e '$requestParamsText' > \`echo \$relayServerTempDirectoryAbsolutePath\`
-      echo \$relayServerTempDirectoryAbsolutePath
     fi
-EOF
 
-    relayServerTempDirectoryAbsolutePath=`cat /tmp/.relayServerTempDirectoryAbsolutePath | xargs dirname`
-    # 経由するインスタンス上に、ローカルファイルをアップロード
-    # ファイル、シンボリックリンクの場合
     if [ -f $localFileOrDirectoryPath ]; then
       echo "ファイルをアップロードします。"
-      scp -C -i $identifyFilePath $localFileOrDirectoryPath $relayPointUser@$host:$relayServerTempDirectoryAbsolutePath
+      scp -i $identifyFilePath $localFileOrDirectoryPath $relayPointUser@$host:$relayServerTempDirectoryAbsolutePath
+      check="ok"
 
       # ディレクトリの場合
     else
       echo "ディレクトリをアップロードします。"
-      scp -C -i $identifyFilePath -r $localFileOrDirectoryPath $relayPointUser@$host:$relayServerTempDirectoryAbsolutePath
+      scp -i $identifyFilePath -r $localFileOrDirectoryPath $relayPointUser@$host:$relayServerTempDirectoryAbsolutePath
+      check="ok"
     fi
   fi
 
-# 引数が3つ
-elif [ $# -eq 3 ]; then
+  # 引数が3つ
+  elif [ $# -eq 3 ]; then
 
-  # 変更前のファイルパス
-  beforePath=$2
+    # 変更前のファイルパス
+    beforePath=$2
 
-  # 変更後のファイルパス
-  afterPath=$3
+    # 変更後のファイルパス
+    afterPath=$3
 
-  if [ $option = "-r" ]; then
+    #rename
+    if [ $option = "-r" ]; then
+      doname="rename"
+      str1="$beforePath|$afterPath"
 
-    # ファイルサーバへのリクエスト情報
-    requestParamsText="uploadAbsolutePath=''\ndeleteAbsolutePath=''\nrenameAbsolutePath=${beforePath}|${afterPath}\ndownloadAbsolutePath=''"
+      # ファイルサーバへのリクエスト情報を一意なディレクトリ内に配置
+      ssh Ri-one-File-Server "mv $beforePath $afterPath"
+      check="ok"
 
-    # 経由サーバへ、ファイルサーバへのリクエスト情報を一意なディレクトリ内に配置
-    ssh -T -i $identifyFilePath $relayPointUser@$host << EOF
-    relayServerTempDirectoryAbsolutePath=\`mktemp -d -p '/home/ec2-user/share'\`/.requestParams
-    echo -e '$requestParamsText' > \`echo \$relayServerTempDirectoryAbsolutePath\`
-EOF
+
+    fi
   fi
-fi
+
+  username=`whoami`
+  timename=`date +"%Y/%m/%d %k:%M:%S"`
+
+  ssh Ri-one-File-Server "cd ~/samba-with-db; logger -t smbd_audit \|${username}\|/home/ri-one/share\|$timename\|$doname\|$check\|$str"
