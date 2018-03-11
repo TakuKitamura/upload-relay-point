@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 鍵のパス
-identifyFilePath="$HOME/.ssh/ri-one-file-server.pem"
+identifyFilePath="xxx.pem"
 
 # 鍵が存在しない時
 if [ ! -f $identifyFilePath ]; then
@@ -13,7 +13,7 @@ fi
 check="no"
 relayPointUser="ri-one"
 
-host="172.25.72.13"
+host="xxx.xxx.xxx.xxx"
 
 option=$1
 
